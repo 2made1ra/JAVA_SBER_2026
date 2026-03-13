@@ -1,6 +1,5 @@
 package LAB_2.tasks;
 
-import java.util.ArrayList;
 import java.util.Random;
 import java.util.Arrays;
 
