@@ -1,5 +1,8 @@
 package LAB_2.leetcode.Q3;
 
+/**
+ * <a href="https://leetcode.com/problems/remove-element/description/">Ссылка на задачу</a>
+ */
 public class Solution {
     public int removeElement(int[] nums, int val) {
         int k = 0;

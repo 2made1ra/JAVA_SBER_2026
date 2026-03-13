@@ -1,5 +1,8 @@
 package LAB_2.leetcode.Q4;
 
+/**
+ * <a href="https://leetcode.com/problems/plus-one/description/">Ссылка на задачу</a>
+ */
 public class Solution {
     public int[] plusOne(int[] digits) {
         int len = digits.length;

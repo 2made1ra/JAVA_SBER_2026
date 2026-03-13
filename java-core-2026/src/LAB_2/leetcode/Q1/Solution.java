@@ -1,5 +1,8 @@
 package LAB_2.leetcode.Q1;
 
+/**
+ * <a href="https://leetcode.com/problems/concatenation-of-array/description/">Ссылка на задачу</a>
+ */
 public class Solution {
     public int[] getConcatenation(int[] nums) {
         int[] result = new int[nums.length * 2];
