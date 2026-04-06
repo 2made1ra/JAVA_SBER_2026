@@ -4,15 +4,32 @@ import java.util.*;
 
 public class CollectionBenchmark {
 
-    // 11 вариант * 1 000 000
-    private static final int ELEMENTS_COUNT = 11_000_000;
+    private static final int VARIANT_NUMBER = 10;
+    private static final int ELEMENTS_COUNT = VARIANT_NUMBER * 1_000_000;
+    private static final long GET_ITERATIONS = (long) VARIANT_NUMBER * 1_000_000_000L;
 
-    // 11 вариант * 1 000 000
-    private static final long GET_ITERATIONS = 11_000_000L;
+    private static final int POSITION_ACCESS_SAMPLES = 1_000;
+    private static final int COLLECTIONS_COUNT = 3;
+    private static final int POSITIONS_COUNT = 3;
+
+    private static final int ARRAY_LIST_INDEX_BEGIN = 0;
+    private static final int ARRAY_LIST_INDEX_MIDDLE_FACTOR = 2;
+    private static final int HASH_VALUE_BEGIN = 0;
+    private static final int HASH_VALUE_MIDDLE_MULTIPLIER = 1;
+
+    private static final String[] COLLECTION_NAMES = {"HashSet", "LinkedHashMap", "ArrayList"};
+    private static final String[] POSITION_NAMES = {"в начале", "в середине", "в конце"};
+
+    private static final int POSITION_BEGIN = 0;
+    private static final int POSITION_MIDDLE = 1;
+    private static final int POSITION_END = 2;
+    private static final int COL_HASH_SET = 0;
+    private static final int COL_LINKED_HASH_MAP = 1;
+    private static final int COL_ARRAY_LIST = 2;
 
     private ArrayList<Integer> arrayList;
-    private ArrayDeque<Integer> arrayDeque;
-    private TreeMap<Integer, Integer> treeMap;
+    private HashSet<Integer> hashSet;
+    private LinkedHashMap<Integer, Integer> linkedHashMap;
 
     public static void main(String[] args) {
         System.out.println("Инициализация коллекций... Пожалуйста, подождите.");
@@ -21,196 +38,193 @@ public class CollectionBenchmark {
     }
 
     public void runAllTests() {
+        System.out.println("Номер варианта: " + VARIANT_NUMBER);
         System.out.println("Количество элементов в коллекции: " + ELEMENTS_COUNT);
-        System.out.println("Итераций для получения по индексу: " + GET_ITERATIONS + "\n");
-        // Обновлен заголовок таблицы
-        System.out.printf("%-35s %-15s %-15s %-15s%n", "Операция (время в мс)", "ArrayList", "ArrayDeque", "TreeMap");
-        System.out.println("----------------------------------------------------------------------------------");
+        System.out.println("Количество операций для скорости получения по индексу: " + GET_ITERATIONS + "\n");
 
-        printResult("1. Добавление в начало", testAddFirst());
-        printResult("2. Добавление в конец", testAddLast());
-        printResult("3. Добавление в середину", testAddMiddle());
-        printResult("4. Удаление из начала", testRemoveFirst());
-        printResult("5. Удаление из конца", testRemoveLast());
-        printResult("6. Удаление из середины", testRemoveMiddle());
+        double[][] addResults = testAddByPosition();
+        double[][] removeResults = testRemoveByPosition();
+        double[] getByIndexResults = testGetByIndex();
 
-        System.out.println("\nВнимание: Выполнение 7 пункта займет время (от нескольких секунд до минут)...");
-        printResult("7. Получение по индексу", testGetByIndex());
+        printPositionTable("Таблица 1. Добавление (мс)", addResults);
+        printPositionTable("Таблица 2. Удаление (мс)", removeResults);
+        printIndexTable("Таблица 3. Получение по индексу (мс)", getByIndexResults);
+
+        System.out.println("\nПримечание:");
+        System.out.println("- Для HashSet и LinkedHashMap позиции начало/середина/конец интерпретируются по диапазону ключей.");
+        System.out.println("- Для получения по индексу используется экстраполяция на " + GET_ITERATIONS + " операций.");
     }
 
-    // Формат вывода изменен для поддержки дробных чисел (до 4 знаков после запятой)
-    private void printResult(String operationName, double[] times) {
-        System.out.printf("%-35s %-15.4f %-15.4f %-15.4f%n", operationName, times[0], times[1], times[2]);
+    private void printPositionTable(String title, double[][] values) {
+        System.out.println(title);
+        System.out.printf("%-15s %-15s %-15s %-15s%n", "Коллекция", POSITION_NAMES[POSITION_BEGIN], POSITION_NAMES[POSITION_MIDDLE], POSITION_NAMES[POSITION_END]);
+        System.out.println("--------------------------------------------------------------------------");
+        for (int i = 0; i < COLLECTIONS_COUNT; i++) {
+            System.out.printf(
+                    "%-15s %-15.4f %-15.4f %-15.4f%n",
+                    COLLECTION_NAMES[i],
+                    values[i][POSITION_BEGIN],
+                    values[i][POSITION_MIDDLE],
+                    values[i][POSITION_END]
+            );
+        }
+        System.out.println();
+    }
+
+    private void printIndexTable(String title, double[] values) {
+        System.out.println(title);
+        System.out.printf("%-15s %-30s%n", "Коллекция", "По индексу для <n> элементов");
+        System.out.println("-------------------------------------------------------");
+        for (int i = 0; i < COLLECTIONS_COUNT; i++) {
+            System.out.printf("%-15s %-30.4f%n", COLLECTION_NAMES[i], values[i]);
+        }
+        System.out.println();
     }
 
     private void resetCollections() {
         arrayList = null;
-        arrayDeque = null;
-        treeMap = null;
+        hashSet = null;
+        linkedHashMap = null;
         System.gc();
 
         arrayList = new ArrayList<>(ELEMENTS_COUNT);
-        arrayDeque = new ArrayDeque<>(ELEMENTS_COUNT);
-        treeMap = new TreeMap<>();
+        hashSet = new HashSet<>(ELEMENTS_COUNT * 2);
+        linkedHashMap = new LinkedHashMap<>(ELEMENTS_COUNT * 2);
 
+        int maxValue = ELEMENTS_COUNT * 2;
         for (int i = 0; i < ELEMENTS_COUNT; i++) {
-            arrayList.add(i);
-            arrayDeque.addLast(i);
-            treeMap.put(i, i);
+            int value = i * ARRAY_LIST_INDEX_MIDDLE_FACTOR;
+            if (value >= maxValue) {
+                value = maxValue - 2;
+            }
+            arrayList.add(value);
+            hashSet.add(value);
+            linkedHashMap.put(value, value);
         }
     }
 
-    private double[] testAddFirst() {
-        double[] times = new double[3];
+    private double[][] testAddByPosition() {
+        double[][] results = new double[COLLECTIONS_COUNT][POSITIONS_COUNT];
+        int addBeginValue = 1;
+        int addMiddleValue = ELEMENTS_COUNT + 1;
+        int addEndValue = ELEMENTS_COUNT * 2 - 1;
+
         resetCollections();
+        results[COL_ARRAY_LIST][POSITION_BEGIN] = measureArrayListAdd(ARRAY_LIST_INDEX_BEGIN, addBeginValue);
+        results[COL_HASH_SET][POSITION_BEGIN] = measureHashSetAdd(addBeginValue);
+        results[COL_LINKED_HASH_MAP][POSITION_BEGIN] = measureLinkedHashMapAdd(addBeginValue);
 
-        long start = System.nanoTime();
-        arrayList.add(0, -1);
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
+        resetCollections();
+        results[COL_ARRAY_LIST][POSITION_MIDDLE] = measureArrayListAdd(arrayList.size() / ARRAY_LIST_INDEX_MIDDLE_FACTOR, addMiddleValue);
+        results[COL_HASH_SET][POSITION_MIDDLE] = measureHashSetAdd(addMiddleValue);
+        results[COL_LINKED_HASH_MAP][POSITION_MIDDLE] = measureLinkedHashMapAdd(addMiddleValue);
 
-        start = System.nanoTime();
-        arrayDeque.addFirst(-1);
-        times[1] = (System.nanoTime() - start) / 1_000_000.0;
+        resetCollections();
+        results[COL_ARRAY_LIST][POSITION_END] = measureArrayListAdd(arrayList.size(), addEndValue);
+        results[COL_HASH_SET][POSITION_END] = measureHashSetAdd(addEndValue);
+        results[COL_LINKED_HASH_MAP][POSITION_END] = measureLinkedHashMapAdd(addEndValue);
 
-        start = System.nanoTime();
-        treeMap.put(-1, -1);
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
-
-        return times;
+        return results;
     }
 
-    private double[] testAddLast() {
-        double[] times = new double[3];
+    private double[][] testRemoveByPosition() {
+        double[][] results = new double[COLLECTIONS_COUNT][POSITIONS_COUNT];
+        int removeBeginValue = HASH_VALUE_BEGIN;
+        int removeMiddleValue = ELEMENTS_COUNT * HASH_VALUE_MIDDLE_MULTIPLIER;
+        int removeEndValue = ELEMENTS_COUNT * 2 - 2;
+
         resetCollections();
+        results[COL_ARRAY_LIST][POSITION_BEGIN] = measureArrayListRemoveByIndex(ARRAY_LIST_INDEX_BEGIN);
+        results[COL_HASH_SET][POSITION_BEGIN] = measureHashSetRemove(removeBeginValue);
+        results[COL_LINKED_HASH_MAP][POSITION_BEGIN] = measureLinkedHashMapRemove(removeBeginValue);
 
-        long start = System.nanoTime();
-        arrayList.add(-1);
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
+        resetCollections();
+        results[COL_ARRAY_LIST][POSITION_MIDDLE] = measureArrayListRemoveByIndex(arrayList.size() / ARRAY_LIST_INDEX_MIDDLE_FACTOR);
+        results[COL_HASH_SET][POSITION_MIDDLE] = measureHashSetRemove(removeMiddleValue);
+        results[COL_LINKED_HASH_MAP][POSITION_MIDDLE] = measureLinkedHashMapRemove(removeMiddleValue);
 
-        start = System.nanoTime();
-        arrayDeque.addLast(-1);
-        times[1] = (System.nanoTime() - start) / 1_000_000.0;
+        resetCollections();
+        results[COL_ARRAY_LIST][POSITION_END] = measureArrayListRemoveByIndex(arrayList.size() - 1);
+        results[COL_HASH_SET][POSITION_END] = measureHashSetRemove(removeEndValue);
+        results[COL_LINKED_HASH_MAP][POSITION_END] = measureLinkedHashMapRemove(removeEndValue);
 
-        start = System.nanoTime();
-        treeMap.put(ELEMENTS_COUNT + 1, -1);
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
-
-        return times;
+        return results;
     }
 
-    private double[] testAddMiddle() {
-        double[] times = new double[3];
-        int mid = ELEMENTS_COUNT / 2;
-        resetCollections();
-
+    private double measureArrayListAdd(int index, int value) {
         long start = System.nanoTime();
-        arrayList.add(mid, -1);
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
-
-        start = System.nanoTime();
-        ArrayDeque<Integer> temp = new ArrayDeque<>();
-        for (int i = 0; i < mid; i++) temp.push(arrayDeque.pollFirst());
-        arrayDeque.addFirst(-1);
-        while (!temp.isEmpty()) arrayDeque.addFirst(temp.pop());
-        times[1] = (System.nanoTime() - start) / 1_000_000.0;
-
-        start = System.nanoTime();
-        treeMap.put(mid, -1);
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
-
-        return times;
+        arrayList.add(index, value);
+        return (System.nanoTime() - start) / 1_000_000.0;
     }
 
-    private double[] testRemoveFirst() {
-        double[] times = new double[3];
-        resetCollections();
-
+    private double measureHashSetAdd(int value) {
         long start = System.nanoTime();
-        arrayList.remove(0);
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
-
-        start = System.nanoTime();
-        arrayDeque.removeFirst();
-        times[1] = (System.nanoTime() - start) / 1_000_000.0;
-
-        start = System.nanoTime();
-        treeMap.remove(treeMap.firstKey());
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
-
-        return times;
+        hashSet.add(value);
+        return (System.nanoTime() - start) / 1_000_000.0;
     }
 
-    private double[] testRemoveLast() {
-        double[] times = new double[3];
-        resetCollections();
-
+    private double measureLinkedHashMapAdd(int key) {
         long start = System.nanoTime();
-        arrayList.remove(arrayList.size() - 1);
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
-
-        start = System.nanoTime();
-        arrayDeque.removeLast();
-        times[1] = (System.nanoTime() - start) / 1_000_000.0;
-
-        start = System.nanoTime();
-        treeMap.remove(treeMap.lastKey());
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
-
-        return times;
+        linkedHashMap.put(key, key);
+        return (System.nanoTime() - start) / 1_000_000.0;
     }
 
-    private double[] testRemoveMiddle() {
-        double[] times = new double[3];
-        int mid = ELEMENTS_COUNT / 2;
-        resetCollections();
-
+    private double measureArrayListRemoveByIndex(int index) {
         long start = System.nanoTime();
-        arrayList.remove(mid);
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
+        arrayList.remove(index);
+        return (System.nanoTime() - start) / 1_000_000.0;
+    }
 
-        start = System.nanoTime();
-        ArrayDeque<Integer> temp = new ArrayDeque<>();
-        for (int i = 0; i < mid; i++) temp.push(arrayDeque.pollFirst());
-        arrayDeque.pollFirst();
-        while (!temp.isEmpty()) arrayDeque.addFirst(temp.pop());
-        times[1] = (System.nanoTime() - start) / 1_000_000.0;
+    private double measureHashSetRemove(int value) {
+        long start = System.nanoTime();
+        hashSet.remove(value);
+        return (System.nanoTime() - start) / 1_000_000.0;
+    }
 
-        start = System.nanoTime();
-        treeMap.remove(mid);
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
-
-        return times;
+    private double measureLinkedHashMapRemove(int key) {
+        long start = System.nanoTime();
+        linkedHashMap.remove(key);
+        return (System.nanoTime() - start) / 1_000_000.0;
     }
 
     private double[] testGetByIndex() {
         double[] times = new double[3];
-        int mid = ELEMENTS_COUNT / 2;
+        int index = ELEMENTS_COUNT / 2;
         resetCollections();
 
-        // 1. ArrayList
-        long start = System.nanoTime();
-        for (long i = 0; i < GET_ITERATIONS; i++) {
-            arrayList.get(mid);
-        }
-        times[0] = (System.nanoTime() - start) / 1_000_000.0;
-
-        // 2. ArrayDeque: Математическая экстраполяция, иначе пришлось ы считать бесконечно долго
-        start = System.nanoTime();
-        Iterator<Integer> iterator = arrayDeque.iterator();
-        Integer val = null;
-        for (int i = 0; i <= mid; i++) {
-            val = iterator.next();
-        }
-        double singleIterationTimeMs = (System.nanoTime() - start) / 1_000_000.0;
-        times[1] = singleIterationTimeMs * GET_ITERATIONS;
-
-        // 3. TreeMap
-        start = System.nanoTime();
-        for (long i = 0; i < GET_ITERATIONS; i++) {
-            treeMap.get(mid);
-        }
-        times[2] = (System.nanoTime() - start) / 1_000_000.0;
+        times[COL_ARRAY_LIST] = estimateArrayListGetTimeMs(index);
+        times[COL_HASH_SET] = estimatePositionAccessTimeMs(hashSet, index);
+        times[COL_LINKED_HASH_MAP] = estimatePositionAccessTimeMs(linkedHashMap.keySet(), index);
 
         return times;
+    }
+
+    private double estimateArrayListGetTimeMs(int index) {
+        long start = System.nanoTime();
+        for (int i = 0; i < POSITION_ACCESS_SAMPLES; i++) {
+            arrayList.get(index);
+        }
+        double sampleDurationMs = (System.nanoTime() - start) / 1_000_000.0;
+        return sampleDurationMs * ((double) GET_ITERATIONS / POSITION_ACCESS_SAMPLES);
+    }
+
+    private double estimatePositionAccessTimeMs(Iterable<Integer> iterable, int index) {
+        long start = System.nanoTime();
+        for (int i = 0; i < POSITION_ACCESS_SAMPLES; i++) {
+            getValueByIndex(iterable, index);
+        }
+        double sampleDurationMs = (System.nanoTime() - start) / 1_000_000.0;
+        return sampleDurationMs * ((double) GET_ITERATIONS / POSITION_ACCESS_SAMPLES);
+    }
+
+    private Integer getValueByIndex(Iterable<Integer> iterable, int index) {
+        int current = 0;
+        for (Integer value : iterable) {
+            if (current == index) {
+                return value;
+            }
+            current++;
+        }
+        throw new IndexOutOfBoundsException("Индекс вне диапазона: " + index);
     }
 }
